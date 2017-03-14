@@ -36,14 +36,14 @@ public class HelloWorld {
 		return Response.status(200).entity(result).build();
 	 }
 	 
-	 @Path("getACE")
+	 @Path("getYK")
 	 @GET
 	 @Produces("application/json")
 	 public Response getACE() throws JSONException, UnirestException {
 		 
 		JSONObject jsonObject = new JSONObject();
 		
-		HttpResponse<JsonNode> response = Unirest.get("http://api.auroras.live/v1/?type=ace&data=kp")
+		HttpResponse<JsonNode> response = Unirest.get("http://api.auroras.live/v1/?type=locations")
 				.header("cookie", "PHPSESSID=MW2MMg7reEHx0vQPXaKen0").asJson();
 		
 		jsonObject = response.getBody().getObject();
