@@ -25,7 +25,7 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 
 //@Path("/")
 public class HelloWorld {
-<<<<<<< HEAD
+
 	 @Path("hello")
 	 @GET
 	 @Produces("application/json")
@@ -66,7 +66,7 @@ public class HelloWorld {
 		
 		return Response.status(200).entity(response.getBody().toString()).build();
 	 }
-=======
+
 	
 /*
 		@GET
@@ -97,6 +97,5 @@ public class HelloWorld {
 			return Response.status(200).entity(response.getBody().toString()).build();
 		}
 		*/
->>>>>>> requestProcessorQuinn
 
 }
