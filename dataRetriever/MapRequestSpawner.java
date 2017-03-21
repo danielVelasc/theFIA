@@ -18,6 +18,7 @@ class MapRequestSpawner {
 	protected Response createMapRequest(MultivaluedMap<String, String> parameterMap) throws UnirestException, JSONException {
 		
 		String googleString = "https://maps.googleapis.com/maps/api/staticmap?center=";
+		String auroraString = new String("http://api.auroras.live/v1/?type=locations");
 		
 		if (!parameterMap.containsKey("id"))
 			return Response.status(400).entity("ERROR 400: Parameter 'id' is mandatory.").type("application/json").build();
@@ -26,6 +27,13 @@ class MapRequestSpawner {
 		
 		if (location == null || location.isEmpty())
 			return Response.status(400).entity("ERROR 400: No location ID was inputted").type("application/json").build();
+		
+		HttpResponse<String> locationsResponse = Unirest.get(auroraString).header("cookie", "PHPSESSID=MW2MMg7reEHx0vQPXaKen0").asString();
+		
+		System.out.println(locationsResponse.getBody().toString());
+		
+		if (!locationsResponse.getBody().toString().contains(location))
+			return Response.status(404).entity("ERROR 404: " + location + " is not a valid hunting location.").type("application/json").build();
 		
 		String label = location.substring(0, 1);
 		label = label.toUpperCase();

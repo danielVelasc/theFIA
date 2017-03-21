@@ -38,7 +38,11 @@ class AuroraRequestSpawner {
 		}
 		
 		HttpResponse<java.io.InputStream> imgResponse = Unirest.get(auroraString).header("cookie", "PHPSESSID=MW2MMg7reEHx0vQPXaKen0").asBinary();
-		return Response.status(200).entity(imgResponse.getBody()).type("image/png").build();
+		
+		if (imgResponse.getStatus() != 200)
+			return Response.status(imgResponse.getStatus()).entity("ERROR " + imgResponse.getStatus()).type("application/json").build();
+		
+		return Response.status(imgResponse.getStatus()).entity(imgResponse.getBody()).type("image/png").build();
 
 	}
 	
@@ -64,7 +68,7 @@ class AuroraRequestSpawner {
 		JSONObject jsonObject = new JSONObject();
 		HttpResponse<JsonNode> response = Unirest.get(auroraString).header("cookie", "PHPSESSID=MW2MMg7reEHx0vQPXaKen0").asJson();
 		jsonObject = response.getBody().getObject();
-		return Response.status(200).entity(response.getBody().toString()).type("application/json").build();
+		return Response.status(response.getStatus()).entity(response.getBody().toString() + " Powered by Auroras.live").type("application/json").build();
 	}
 	
 
