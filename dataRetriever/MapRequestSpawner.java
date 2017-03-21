@@ -1,5 +1,7 @@
 package dataRetriever;
 
+import java.util.ArrayList;
+
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
@@ -32,7 +34,7 @@ class MapRequestSpawner {
 		
 		System.out.println(locationsResponse.getBody().toString());
 		
-		if (!locationsResponse.getBody().toString().contains(location))
+		if (!isValidLocation(locationsResponse.getBody().toString(), location))
 			return Response.status(404).entity("ERROR 404: " + location + " is not a valid hunting location.").type("application/json").build();
 		
 		String label = location.substring(0, 1);
@@ -43,6 +45,27 @@ class MapRequestSpawner {
 		
 		HttpResponse<java.io.InputStream> imgResponse = Unirest.get(googleString).header("cookie", "PHPSESSID=MW2MMg7reEHx0vQPXaKen0").asBinary();
 		return Response.status(200).entity(imgResponse.getBody()).type("image/png").build();
+		
+	}
+	
+	private boolean isValidLocation(String locationsArray, String loc) {
+		
+		String[] splitA = locationsArray.split("\"id\":\"");
+		ArrayList<String> validLocations = new ArrayList<>();
+		
+		for (String str : splitA) {
+			String[] splitB = str.split("\",\"name\"");
+			validLocations.add(splitB[0]);
+		}
+		
+		for (String str : validLocations) {
+			if (str == null || str.isEmpty())
+				continue;
+			if (str.compareToIgnoreCase(loc) == 0)
+				return true;
+		}
+		
+		return false;
 		
 	}
 
