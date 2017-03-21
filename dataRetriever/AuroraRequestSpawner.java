@@ -5,6 +5,7 @@ import java.util.Iterator;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -65,10 +66,20 @@ class AuroraRequestSpawner {
 			
 		}
 		
+		String att = "Powered by Auroras.live";
 		JSONObject jsonObject = new JSONObject();
 		HttpResponse<JsonNode> response = Unirest.get(auroraString).header("cookie", "PHPSESSID=MW2MMg7reEHx0vQPXaKen0").asJson();
-		jsonObject = response.getBody().getObject();
-		return Response.status(response.getStatus()).entity(response.getBody().toString() + " Powered by Auroras.live").type("application/json").build();
+		if(!type.equalsIgnoreCase("locations")) {
+			jsonObject = response.getBody().getObject();
+			jsonObject.put("Attribution", att);
+		}
+		else {
+			JSONArray responseArray = response.getBody().getArray();
+			JSONObject jsonAttributionObject = new JSONObject();
+			jsonAttributionObject.put("Attribution", att);
+			responseArray.put(jsonAttributionObject);
+		}
+		return Response.status(response.getStatus()).entity(response.getBody().toString()).type("application/json").build();
 	}
 	
 
