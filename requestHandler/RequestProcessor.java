@@ -18,6 +18,7 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 
+import cacheController.CacheManager;
 import dataRetriever.RESTRequestFacade;
 
 @Path("/")
@@ -27,11 +28,17 @@ public class RequestProcessor {
 	
 	private RESTRequestFacade restFacade = new RESTRequestFacade();
 	
+	private CacheManager cacheManager = new CacheManager();
+	
+	public RequestProcessor() { System.out.println("Created!!!!!!!!!!!!!!!!!!!!!!!!"); }
+	
 	@GET
 	@Produces({"application/json", "image/png"})
-	public Response lookupFunction(@Context UriInfo ui) throws JSONException, UnirestException{
+	public Response lookupFunction(@Context UriInfo ui) throws JSONException, UnirestException {
 		MultivaluedMap<String, String> parameterMap = ui.getQueryParameters();
 
+		System.out.println("Lookup Function");
+		
 		String type = parameterMap.get("type").get(0);
 		
 		for (int i = 0; i < types.length; i++ ) {
@@ -44,16 +51,34 @@ public class RequestProcessor {
 			
 		}
 		
-
 		
 		type = type.toLowerCase();
 		
-		if((type.equals("images" ) && !parameterMap.containsKey("action")) || type.equals("embed" ) || type.equals("map"))
-		{
-			return restFacade.composeImageRequest(parameterMap);
+		String noCaching = null;
+		
+		// pull the no-caching variable from the map to determine if caching should occur
+		// current default is to call auroras.live if the variable is absent.
+		if (parameterMap.containsKey("no-caching"))
+			noCaching = parameterMap.get("no-caching").get(0);
+		else
+			noCaching = "true";
+		
+		noCaching = noCaching.toLowerCase();
+		
+		System.out.println("cache decision");
+		
+		if (noCaching.equals("false")) {
+			System.out.println("Cache get");
+			return cacheManager.cacheGet(parameterMap);
 		}
 		else {
-			return restFacade.composeAuroraRequest(parameterMap);
+			if((type.equals("images" ) && !parameterMap.containsKey("action")) || type.equals("embed" ) || type.equals("map"))
+			{
+				return restFacade.composeImageRequest(parameterMap);
+			}
+			else {
+				return restFacade.composeAuroraRequest(parameterMap);
+			}
 		}
 	}
 }

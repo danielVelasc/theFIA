@@ -23,9 +23,9 @@ public class RESTRequestFacade {
 	private AuroraRequestSpawner auroraRS = new AuroraRequestSpawner();
 	private MapRequestSpawner mapRS = new MapRequestSpawner();
 	
-	
-	
-	public Response composeAuroraRequest(MultivaluedMap<String, String> parameterMap) throws UnirestException, JSONException{
+	public Response composeAuroraRequest(MultivaluedMap<String, String> parameterMap) throws UnirestException, JSONException {
+		
+		System.out.println("Calling auroras.live");
 		
 		return auroraRS.createStandardRequest(parameterMap);
 		
