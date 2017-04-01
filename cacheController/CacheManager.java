@@ -1,13 +1,8 @@
 package cacheController;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import javax.ws.rs.core.MultivaluedMap;
@@ -22,77 +17,91 @@ import dataRetriever.RESTRequestFacade;
 
 public class CacheManager {
 
-	/**
-	 * The time to live for the specific types of objects stored inside the cache.
-	 * These are stored in milliseconds.
-	 * If the information is supposed to be stored indefinitely, this will be set -1.
-	 * 
-	 */
-	private long AceTTL;
-	private long ArchiveTTL;
-	private long EmbedTTL;
-	private long ImageTTL;
-	private long LocationTTL;
-	private long MapTTL;
-	private long WeatherTTL;
 	
+	/**
+	 * Used to store the administrator information for the admin users.
+	 */
+	private ArrayList<String[]> users = new ArrayList<>();
+	
+	/**
+	 * Can be used to communicate with the auroras.live API.
+	 */
 	private RESTRequestFacade restFacade = new RESTRequestFacade();
 	
+	/**
+	 * The constructor for the CacheManager object. This sets the usernames and passwords for
+	 * configure command.
+	 */
+	public CacheManager() {
+		
+		String[] daniel = {"dvelasco", "papi"};
+		String[] quinn = {"quinnbischoff", "queenb"};
+		String[] eric = {"ericmatteucci", "AwkwardAardvark420"};
+		
+		users.add(daniel);
+		users.add(eric);
+		users.add(quinn);
+		
+	}
+	
+	/**
+	 * The method used to make cache decisions and either call the Auroras.live API or the
+	 * cache to get the needed information to be sent back as a Response.
+	 * @param parameterMap The parameters from the call to the server.
+	 * @return a formatted Response from either the Auroras.live server or the cache.
+	 * @throws UnirestException
+	 * @throws JSONException
+	 */
 	public Response cacheGet(MultivaluedMap<String, String> parameterMap) throws UnirestException, JSONException {
 		
+		// get the type of request
 		String type = parameterMap.get("type").get(0);
-		String keyString = "type=" + type;
-		int hashKey = createKey(parameterMap);
 		
-		Iterator<String> it = parameterMap.keySet().iterator();
-		while(it.hasNext()){
-			String theKey = (String)it.next();
-			String theValue = parameterMap.get(theKey).get(0);
-			
-			if(!theKey.equals("type"))
-			{
-				keyString = keyString + "&" +theKey+"=";
-				keyString = keyString + theValue;
-			}
-			
-		}
+		// generate the cache key
+		int hashKey = createKey(parameterMap);
 		
 		boolean useCache = false;
 		
+		// check if the cache contains the specified cache key
 		if (Cache.getData().lifeMap.containsKey(hashKey)) {
 			
 			String typeCondition = type.toLowerCase();
 			
-			long lifeInMillis = Cache.getData().lifeMap.get(hashKey) - System.currentTimeMillis();
+			long lifeInMillis = System.currentTimeMillis() - Cache.getData().lifeMap.get(hashKey);
 			
+			// determine if the time to live of the specific item in the cache has expired
 			switch(typeCondition) {
 			
 			case "ace":
-				if (lifeInMillis < AceTTL || AceTTL == -1)
+				if (lifeInMillis < Cache.getData().AceTTL || Cache.getData().AceTTL == -1)
+					useCache = true;
+				break;
+			case "all":
+				if (lifeInMillis < Cache.getData().AllTTL || Cache.getData().AllTTL == -1)
 					useCache = true;
 				break;
 			case "archive":
-				if (lifeInMillis < ArchiveTTL || ArchiveTTL == -1)
+				if (lifeInMillis < Cache.getData().ArchiveTTL || Cache.getData().ArchiveTTL == -1)
 					useCache = true;
 				break;
 			case "embed":
-				if (lifeInMillis < EmbedTTL || EmbedTTL == -1)
+				if (lifeInMillis < Cache.getData().EmbedTTL || Cache.getData().EmbedTTL == -1)
 					useCache = true;
 				break;
 			case "images":
-				if (lifeInMillis < ImageTTL || ImageTTL == -1)
+				if (lifeInMillis < Cache.getData().ImageTTL || Cache.getData().ImageTTL == -1)
 					useCache = true;
 				break;
 			case "locations":
-				if (lifeInMillis < LocationTTL || LocationTTL == -1)
+				if (lifeInMillis < Cache.getData().LocationTTL || Cache.getData().LocationTTL == -1)
 					useCache = true;
 				break;
 			case "map":
-				if (lifeInMillis < MapTTL || MapTTL == -1)
+				if (lifeInMillis < Cache.getData().MapTTL || Cache.getData().MapTTL == -1)
 					useCache = true;
 				break;
 			case "weather":
-				if (lifeInMillis < WeatherTTL|| WeatherTTL == -1)
+				if (lifeInMillis < Cache.getData().WeatherTTL|| Cache.getData().WeatherTTL == -1)
 					useCache = true;
 				break;
 			default:
@@ -104,20 +113,13 @@ public class CacheManager {
 		
 		Response response = null;
 		
-		System.out.println("before deciding on cache in cacheManager");
-		
-		System.out.println("keyString: " + keyString);
-		
-		System.out.println("key: " + hashKey);
-		
+		// if the time to live is valid or if item has an indefinite cache, retrieve the item from the cache 
 		if (useCache) {
 			// call the cache here
-			System.out.println("getting from cache");
+			System.out.println("Get from cache");
 			
 			if (type.equals("map") || type.equals("images")) {
 				byte[] entityBody = Cache.getData().imageCacheMap.get(hashKey);
-				System.out.println(entityBody.length);
-				System.out.println("returning the cache image response");
 				
 				InputStream stream = new ByteArrayInputStream(entityBody);
 				
@@ -128,16 +130,18 @@ public class CacheManager {
 			
 		}
 		else {
-			// call the requestFacade
-			// This is a placeholder. There should be a store of the item as well.
+
 			
 			byte[] imageStore = null;
 			
+			// call the needed function in the facade to delegate to the proper calls to the 
+			// Auroras.live API
 			if((type.equals("images" ) && !parameterMap.containsKey("action")) || type.equals("embed" ) || type.equals("map"))
 			{
 				response = restFacade.composeImageRequest(parameterMap);
 				imageStore = restFacade.getCacheImage(parameterMap);
 				
+				// store the image in the cache
 				if (imageStore != null)
 					cacheStore(hashKey, imageStore);
 			}
@@ -146,17 +150,19 @@ public class CacheManager {
 				cacheStore(hashKey, response);
 			}
 			
-			System.out.println("Cache Store");
-			
 		}
 		
+		// return the formatted response from the Auroras.live API
 		return response;
 		
 	}
 	
+	/**
+	 * Used to store the json application responses in the cache.
+	 * @param hashKey The cache key for the specified request item. 
+	 * @param response The formatted json response to be stored in the cache.
+	 */
 	private void cacheStore(int hashKey, Response response) {
-		
-		// placeholder
 		
 		Cache.getData().cacheMap.put(hashKey, response);
 		
@@ -164,6 +170,11 @@ public class CacheManager {
 		
 	}
 	
+	/**
+	 * Used to store the image type objects in the cache.
+	 * @param hashKey The cache key for the specified request item.
+	 * @param byteArray The byte array containing the image to be stored in the cache.
+	 */
 	private void cacheStore(int hashKey, byte[] byteArray) {
 	
 		Cache.getData().imageCacheMap.put(hashKey, byteArray);
@@ -173,173 +184,9 @@ public class CacheManager {
 	}
 	
 	/**
-	 * Reads in the configuration settings from a text file.
-	 * The file should be of the following format. 
-	 * _____________________________________________________
-	 * 
-	 * 
-	 * Cache Configurations - Version X.X
-	 * Last Modified By - XXXXXXXXXXX
-	 * 
-	 * ACE - TTL: DD:HH:MM:SS
-	 * Archive - TTL: DD:HH:MM:SS
-	 * Embed - TTL: DD:HH:MM:SS
-	 * Image - TTL: DD:HH:MM:SS
-	 * Location - TTL: DD:HH:MM:SS
-	 * Map - TTL: DD:HH:MM:SS
-	 * Weather - TTL: DD:HH:MM:SS
-	 * 
-	 * _____________________________________________________
-	 * 
-	 * Note: DD:HH:MM:SS may be replaced by "Indefinite Cache" to 
-	 * cache the items indefinitely.
-	 * 
+	 * The valid arguments that can be configured within the cache.
 	 */
-//	private void configure() {
-//		
-//		String currentDir = System.getProperty("user.dir") + File.separator + 
-//				System.getProperty("sun.java.command").substring(0, System.getProperty("sun.java.command").lastIndexOf(".")).replace(".", File.separator);
-//		System.out.println(currentDir);
-//		
-//		File configurationFile = new File("cacheController/CacheConfiguration.txt");
-//		BufferedReader reader = null;
-//		
-//		if (configurationFile.exists())
-//			System.out.println("File Found");
-//		else 
-//			System.out.println("File Not Found");
-//		
-//		try {
-//			reader = new BufferedReader(new FileReader(configurationFile));
-//		} catch (FileNotFoundException e) {
-//			System.err.println("There was an error locating the cache configuration file. Program Terminated.");
-//			System.exit(1);
-//		}
-//		
-//		try {
-//			
-//			
-//			String line = reader.readLine();
-//			
-//			while(line != null) {
-//				
-//				if (line.length() == 0) {
-//					line = reader.readLine();
-//					continue;
-//				}
-//				
-//				String[] lineSplit = line.split(" - ");
-//				String type = lineSplit[0];
-//				
-//				switch(type) {
-//				
-//				case "ACE":
-//				case "Archive":
-//				case "Embed":
-//				case "Images":
-//				case "Locations":
-//				case "Map":
-//				case "Weather":
-//					processTTL(type, lineSplit[1]);
-//					break;
-//					
-//				default:
-//					break;
-//						
-//				}
-//				
-//			}
-//			
-//
-//			
-//		} catch (IOException e) {
-//			System.err.println("There was an error reading in the cache configurations. Program Terminated.");
-//			System.exit(1);
-//		}
-//		
-//		try {
-//			reader.close();
-//		} catch (IOException e) {
-//			System.err.println("There was an error closing the reader for the configuration file. Program Terminated.");
-//			System.exit(1);
-//		}
-//		
-//	}
-//	
-//	private void configure() {
-//		
-//		AceTTL = 100000;
-//		ArchiveTTL = 100000;
-//		EmbedTTL = 139139913;
-//		ImageTTL = 80008;
-//		LocationTTL = 13139931;
-//		MapTTL = 2020020020;
-//		WeatherTTL = 3333333;
-//		
-//	}
-	
-	
-	/**
-	 * a helper function for the configure method
-	 * @param type the cache type for TTL to be processed
-	 * @param str the string to be processed
-	 */
-//	private void processTTL(String type, String str) {
-//		
-//		
-//		String[] strSplit = str.split(" ");
-//		
-//		long timeInMillis;
-//		
-//		if (strSplit[1] == "Indefinite Cache")
-//			timeInMillis = -1;
-//		else {
-//			String[] splitTime = strSplit[1].split(":");
-//			
-//			int day = Integer.parseInt(splitTime[0]);
-//			int hour = Integer.parseInt(splitTime[1]);
-//			int minute = Integer.parseInt(splitTime[2]);
-//			int second = Integer.parseInt(splitTime[3]);
-//			
-//			timeInMillis = (second * 1000);
-//			timeInMillis += (minute * 60 * 1000);
-//			timeInMillis += (hour * 3600 * 1000);
-//			timeInMillis += (day * 24 * 3600* 1000);
-//			
-//		}
-//		
-//		
-//		switch(type) {
-//		
-//		case "ACE":
-//			AceTTL = timeInMillis;
-//			break;
-//		case "Archive":
-//			ArchiveTTL = timeInMillis;
-//			break;
-//		case "Embed":
-//			EmbedTTL = timeInMillis;
-//			break;
-//		case "Images":
-//			ImageTTL = timeInMillis;
-//			break;
-//		case "Locations":
-//			LocationTTL = timeInMillis;
-//			break;
-//		case "Map":
-//			MapTTL = timeInMillis;
-//			break;
-//		case "Weather":
-//			WeatherTTL = timeInMillis;
-//			break;
-//		default:
-//			break;
-//				
-//		}
-//		
-//	}
-//	
-	private final String[] configureArguments = {"ace", "archive", "embed", "images", "locations", "map", "weather" };
+	private final String[] configureArguments = {"all", "ace", "archive", "embed", "images", "locations", "map", "weather" };
 	
 	private boolean isValidArgument(String str) {
 		
@@ -354,12 +201,43 @@ public class CacheManager {
 
 	}
 	
-	public void configure(MultivaluedMap<String, String> parameterMap) {
+	/** 
+	 * Use to configure the cache and set the times to live for the specific items in the cache.
+	 * @param parameterMap The parameters from the call to the server.
+	 * @return A response that signifies if the configure was successful or not.
+	 */
+	public Response configure(MultivaluedMap<String, String> parameterMap) {
 		
-		boolean[] setDefault = new boolean[7];
+		String username = null;
+		String password = null;
+		
+		boolean validAdmin = false;
+		
+		// check if the username and password that were entered are valid.
+		if (parameterMap.containsKey("username") && parameterMap.containsKey("password")) {
+			username = parameterMap.get("username").get(0);
+			password = parameterMap.get("password").get(0);
+			
+			for (int i = 0; i < users.size(); i++) {
+				
+				if (users.get(i)[0].equals(username) && users.get(i)[1].equals(password)) {
+					validAdmin = true;
+					break;
+				}
+			}	
+		}
+		
+		// if the username and password were not valid, return with an error Response.
+		if(!validAdmin)
+			return Response.status(400).entity("Username and password are incorrect").type("application/json").build();
+		
+		// Instantiate the boolean array to determine which times to live need to be set to a default value.
+		boolean[] setDefault = new boolean[8];
 		for(int i = 0; i < setDefault.length; i++)
 			setDefault[i] = true;
 		
+		// Cycle through the parameterMap and find out which times to live need to 
+		// set to the specified values.
 		Iterator<String> it = parameterMap.keySet().iterator();
 		while(it.hasNext()){
 			String theKey = (String)it.next();
@@ -373,32 +251,36 @@ public class CacheManager {
 				switch(switchArgument) {
 				
 				case "ace":
-					AceTTL = timeInMillis;
+					Cache.getData().AceTTL = timeInMillis;
 					setDefault[0] = false;
 					break;
 				case "archive":
-					ArchiveTTL = timeInMillis;
+					Cache.getData().ArchiveTTL = timeInMillis;
 					setDefault[1] = false;
 					break;
 				case "embed":
-					EmbedTTL = timeInMillis;
+					Cache.getData().EmbedTTL = timeInMillis;
 					setDefault[2] = false;
 					break;
 				case "images":
-					ImageTTL = timeInMillis;
+					Cache.getData().ImageTTL = timeInMillis;
 					setDefault[3] = false;
 					break;
 				case "locations":
-					LocationTTL = timeInMillis;
+					Cache.getData().LocationTTL = timeInMillis;
 					setDefault[4] = false;
 					break;
 				case "map":
-					MapTTL = timeInMillis;
+					Cache.getData().MapTTL = timeInMillis;
 					setDefault[5] = false;
 					break;
 				case "weather":
-					WeatherTTL = timeInMillis;
+					Cache.getData().WeatherTTL = timeInMillis;
 					setDefault[6] = false;
+					break;
+				case "all":
+					Cache.getData().AllTTL = timeInMillis;
+					setDefault[7] = false;
 					break;
 				default:
 					break;
@@ -408,6 +290,7 @@ public class CacheManager {
 			
 		}
 		
+		// Set the rest of the times to live to the default values.
 		if (parameterMap.containsKey("default")) {
 			
 			long timeInMillis = Long.parseLong(parameterMap.get("default").get(0));
@@ -420,25 +303,28 @@ public class CacheManager {
 				switch(i) {
 				
 				case 0:
-					AceTTL = timeInMillis;
+					Cache.getData().AceTTL = timeInMillis;
 					break;
 				case 1:
-					ArchiveTTL = timeInMillis;
+					Cache.getData().ArchiveTTL = timeInMillis;
 					break;
 				case 2:
-					EmbedTTL = timeInMillis;
+					Cache.getData().EmbedTTL = timeInMillis;
 					break;
 				case 3:
-					ImageTTL = timeInMillis;
+					Cache.getData().ImageTTL = timeInMillis;
 					break;
 				case 4:
-					LocationTTL = timeInMillis;
+					Cache.getData().LocationTTL = timeInMillis;
 					break;
 				case 5:
-					MapTTL = timeInMillis;
+					Cache.getData().MapTTL = timeInMillis;
 					break;
 				case 6:
-					WeatherTTL = timeInMillis;
+					Cache.getData().WeatherTTL = timeInMillis;
+					break;
+				case 7:
+					Cache.getData().AllTTL = timeInMillis;
 					break;
 				default:
 					break;
@@ -448,12 +334,21 @@ public class CacheManager {
 			
 		}
 		
+		// return with a Response saying that the configuration was successful
+		return Response.status(200).entity("Cache configured successfully").type("application/json").build();
+		
 	}
 	
+	/**
+	 * Creates the cache key for the cache.
+	 * @param parameterMap The parameters from the call to the server.
+	 * @return The newly created cache key.
+	 */
 	private int createKey(MultivaluedMap<String, String> parameterMap) {
 		
 		int key = 0;
 		
+		// iterate through and find create the cache key from the parameters.
 		Iterator<String> it = parameterMap.keySet().iterator();
 		while(it.hasNext()){
 			String theKey = (String)it.next();
@@ -466,6 +361,22 @@ public class CacheManager {
 		}
 		
 		return key;
+		
+	}
+	
+	/**
+	 * Use to clear the cache of all entries.
+	 * @return A response stating that the purge was successful.
+	 */
+	public Response clearCache() {
+		
+		// clear all of the cache components.
+		Cache.getData().lifeMap.clear();
+		Cache.getData().cacheMap.clear();
+		Cache.getData().imageCacheMap.clear();
+		
+		// return with a message stating that the clearing was successful.
+		return Response.status(200).entity("Cache cleared successfully").type("application/json").build();
 		
 	}
 
