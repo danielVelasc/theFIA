@@ -1,5 +1,7 @@
 package dataRetriever;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import javax.ws.rs.core.MultivaluedMap;
@@ -17,6 +19,58 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 
 class AuroraRequestSpawner {
 	
+	protected byte[] createCacheImageRequest(MultivaluedMap<String, String> parameterMap) throws UnirestException,JSONException {
+		
+		String auroraString = new String("http://api.auroras.live/v1/?type=");
+		String type = parameterMap.get("type").get(0).toLowerCase();
+		
+		auroraString = auroraString + type;
+		
+		Iterator<String> it = parameterMap.keySet().iterator();
+		while(it.hasNext()){
+			String theKey = (String)it.next();
+			String theValue = parameterMap.get(theKey).get(0);
+			
+			if(!theKey.equals("type") || !theKey.equals("no-caching"))
+			{
+				auroraString = auroraString + "&" +theKey+"=";
+				auroraString = auroraString + theValue;
+			}
+			
+		}
+		
+		HttpResponse<java.io.InputStream> imgResponse = Unirest.get(auroraString).header("cookie", "PHPSESSID=MW2MMg7reEHx0vQPXaKen0").asBinary();
+		
+		if (imgResponse.getStatus() != 200)
+			return null;
+		
+		byte[] byteRead = null;
+		
+		int length = 1;
+		while(true) {
+			
+			byteRead = new byte[length];
+			
+			try {
+				int check = imgResponse.getBody().read(byteRead, 0, length);
+				if (check < length) {
+					length--;
+					byteRead = new byte[length];
+					imgResponse.getBody().read(byteRead, 0, length);
+					break;
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			length++;
+			
+		}
+		
+		return byteRead;
+
+	}
 	
 	protected Response createImageRequest(MultivaluedMap<String, String> parameterMap) throws UnirestException,JSONException {
 		
@@ -30,7 +84,7 @@ class AuroraRequestSpawner {
 			String theKey = (String)it.next();
 			String theValue = parameterMap.get(theKey).get(0);
 			
-			if(!theKey.equals("type"))
+			if(!theKey.equals("type") || !theKey.equals("no-caching"))
 			{
 				auroraString = auroraString + "&" +theKey+"=";
 				auroraString = auroraString + theValue;

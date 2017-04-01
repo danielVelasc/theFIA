@@ -44,5 +44,17 @@ public class RESTRequestFacade {
 		
 	}
 	
-
+	
+	public byte[] getCacheImage(MultivaluedMap<String, String> parameterMap) throws JSONException, UnirestException {
+		
+		String type = parameterMap.get("type").get(0);
+		
+		if (type.compareToIgnoreCase("map") == 0) {
+			return mapRS.createCacheMapRequest(parameterMap);
+		}
+		else {
+			return auroraRS.createCacheImageRequest(parameterMap);
+		}
+	}
+	
 }

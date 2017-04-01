@@ -24,7 +24,7 @@ import dataRetriever.RESTRequestFacade;
 @Path("/")
 public class RequestProcessor {
 	
-	public static final String[] types = {"all", "ace", "archive", "embed", "images", "locations", "map", "weather"}; 
+	private static final String[] types = {"all", "ace", "archive", "embed", "images", "locations", "map", "weather", "configure"}; 
 	
 	private RESTRequestFacade restFacade = new RESTRequestFacade();
 	
@@ -33,7 +33,7 @@ public class RequestProcessor {
 	public RequestProcessor() { System.out.println("Created!!!!!!!!!!!!!!!!!!!!!!!!"); }
 	
 	@GET
-	@Produces({"application/json", "image/png"})
+	@Produces({"application/json", "image/png", "image/jpg"})
 	public Response lookupFunction(@Context UriInfo ui) throws JSONException, UnirestException {
 		MultivaluedMap<String, String> parameterMap = ui.getQueryParameters();
 
@@ -66,6 +66,12 @@ public class RequestProcessor {
 		noCaching = noCaching.toLowerCase();
 		
 		System.out.println("cache decision");
+		
+		if (type.equals("configure")) {
+			cacheManager.configure(parameterMap);
+			System.out.println("Cache configured");
+			return Response.status(200).entity("Cache configured successfully").type("application/json").build();
+		}
 		
 		if (noCaching.equals("false")) {
 			System.out.println("Cache get");

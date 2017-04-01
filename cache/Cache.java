@@ -11,7 +11,7 @@ public class Cache {
 	 * the aurora.live string used for a query request except it starts at "type"
 	 * eg. a key could be { type=locations }
 	 */
-	public HashMap<String, Long> lifeMap = new HashMap<>();
+	public HashMap<Integer, Long> lifeMap = new HashMap<>();
 	
 	/**
 	 * 
@@ -21,7 +21,8 @@ public class Cache {
 	 * 
 	 * 
 	 */
-	public HashMap<String, Response> cacheMap = new HashMap<>();
+	public HashMap<Integer, Response> cacheMap = new HashMap<>();
+	public HashMap<Integer, byte[]> imageCacheMap = new HashMap<>();
 	
 	private static Cache cache = new Cache();
 	
