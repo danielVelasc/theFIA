@@ -9,6 +9,7 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.mashape.unirest.http.exceptions.UnirestException;
 
@@ -17,6 +18,20 @@ import dataRetriever.RESTRequestFacade;
 
 public class CacheManager {
 
+	/**
+	 * Used to record the number of global hits and misses from a session
+	 */
+	private static int hits = 0;
+	private static int misses = 0;
+	private static CacheManager cacheManager = new CacheManager();
+	private Cache cache;
+	
+	/**
+	 *  a method to return the instance of the cache
+	 * @return the singleton instance
+	 */
+	public static CacheManager getCacheManager() { return cacheManager; }
+	
 	
 	/**
 	 * Used to store the administrator information for the admin users.
@@ -30,9 +45,9 @@ public class CacheManager {
 	
 	/**
 	 * The constructor for the CacheManager object. This sets the usernames and passwords for
-	 * configure command.
+	 * configure command and creates the cache it will manage.
 	 */
-	public CacheManager() {
+	private CacheManager() {
 		
 		String[] daniel = {"dvelasco", "papi"};
 		String[] quinn = {"quinnbischoff", "queenb"};
@@ -41,6 +56,8 @@ public class CacheManager {
 		users.add(daniel);
 		users.add(eric);
 		users.add(quinn);
+		
+		cache = new Cache();
 		
 	}
 	
@@ -63,45 +80,45 @@ public class CacheManager {
 		boolean useCache = false;
 		
 		// check if the cache contains the specified cache key
-		if (Cache.getData().lifeMap.containsKey(hashKey)) {
+		if (cache.lifeMap.containsKey(hashKey)) {
 			
 			String typeCondition = type.toLowerCase();
 			
-			long lifeInMillis = System.currentTimeMillis() - Cache.getData().lifeMap.get(hashKey);
+			long lifeInMillis = System.currentTimeMillis() - cache.lifeMap.get(hashKey);
 			
 			// determine if the time to live of the specific item in the cache has expired
 			switch(typeCondition) {
 			
 			case "ace":
-				if (lifeInMillis < Cache.getData().AceTTL || Cache.getData().AceTTL == -1)
+				if (lifeInMillis < cache.AceTTL || cache.AceTTL == -1)
 					useCache = true;
 				break;
 			case "all":
-				if (lifeInMillis < Cache.getData().AllTTL || Cache.getData().AllTTL == -1)
+				if (lifeInMillis < cache.AllTTL || cache.AllTTL == -1)
 					useCache = true;
 				break;
 			case "archive":
-				if (lifeInMillis < Cache.getData().ArchiveTTL || Cache.getData().ArchiveTTL == -1)
+				if (lifeInMillis < cache.ArchiveTTL || cache.ArchiveTTL == -1)
 					useCache = true;
 				break;
 			case "embed":
-				if (lifeInMillis < Cache.getData().EmbedTTL || Cache.getData().EmbedTTL == -1)
+				if (lifeInMillis < cache.EmbedTTL || cache.EmbedTTL == -1)
 					useCache = true;
 				break;
 			case "images":
-				if (lifeInMillis < Cache.getData().ImageTTL || Cache.getData().ImageTTL == -1)
+				if (lifeInMillis < cache.ImageTTL || cache.ImageTTL == -1)
 					useCache = true;
 				break;
 			case "locations":
-				if (lifeInMillis < Cache.getData().LocationTTL || Cache.getData().LocationTTL == -1)
+				if (lifeInMillis < cache.LocationTTL || cache.LocationTTL == -1)
 					useCache = true;
 				break;
 			case "map":
-				if (lifeInMillis < Cache.getData().MapTTL || Cache.getData().MapTTL == -1)
+				if (lifeInMillis < cache.MapTTL || cache.MapTTL == -1)
 					useCache = true;
 				break;
 			case "weather":
-				if (lifeInMillis < Cache.getData().WeatherTTL|| Cache.getData().WeatherTTL == -1)
+				if (lifeInMillis < cache.WeatherTTL|| cache.WeatherTTL == -1)
 					useCache = true;
 				break;
 			default:
@@ -115,23 +132,25 @@ public class CacheManager {
 		
 		// if the time to live is valid or if item has an indefinite cache, retrieve the item from the cache 
 		if (useCache) {
+			hits++;
 			// call the cache here
-			System.out.println("Get from cache");
+			System.out.println("Get from cache. Hits: "+hits);
 			
 			if (type.equals("map") || type.equals("images")) {
-				byte[] entityBody = Cache.getData().imageCacheMap.get(hashKey);
+				byte[] entityBody = cache.imageCacheMap.get(hashKey);
 				
 				InputStream stream = new ByteArrayInputStream(entityBody);
 				
 				return Response.status(200).entity(stream).type("image/jpg").build();
 			}
 				
-			response = Cache.getData().cacheMap.get(hashKey);
+			response = cache.cacheMap.get(hashKey);
 			
 		}
 		else {
 
-			
+			misses++;
+			System.out.println("Get from other server. Misses: "+misses);
 			byte[] imageStore = null;
 			
 			// call the needed function in the facade to delegate to the proper calls to the 
@@ -164,9 +183,9 @@ public class CacheManager {
 	 */
 	private void cacheStore(int hashKey, Response response) {
 		
-		Cache.getData().cacheMap.put(hashKey, response);
+		cache.cacheMap.put(hashKey, response);
 		
-		Cache.getData().lifeMap.put(hashKey, System.currentTimeMillis());
+		cache.lifeMap.put(hashKey, System.currentTimeMillis());
 		
 	}
 	
@@ -177,9 +196,9 @@ public class CacheManager {
 	 */
 	private void cacheStore(int hashKey, byte[] byteArray) {
 	
-		Cache.getData().imageCacheMap.put(hashKey, byteArray);
+		cache.imageCacheMap.put(hashKey, byteArray);
 		
-		Cache.getData().lifeMap.put(hashKey, System.currentTimeMillis());
+		cache.lifeMap.put(hashKey, System.currentTimeMillis());
 		
 	}
 	
@@ -190,13 +209,10 @@ public class CacheManager {
 	
 	private boolean isValidArgument(String str) {
 		
-		for (int i = 0; i < configureArguments.length; i++ ) {
-			
+		for (int i = 0; i < configureArguments.length; i++ )
 			if (configureArguments[i].compareToIgnoreCase(str) == 0)
 				return true;
-			
-		}
-		
+	
 		return false;
 
 	}
@@ -208,27 +224,8 @@ public class CacheManager {
 	 */
 	public Response configure(MultivaluedMap<String, String> parameterMap) {
 		
-		String username = null;
-		String password = null;
-		
-		boolean validAdmin = false;
-		
-		// check if the username and password that were entered are valid.
-		if (parameterMap.containsKey("username") && parameterMap.containsKey("password")) {
-			username = parameterMap.get("username").get(0);
-			password = parameterMap.get("password").get(0);
-			
-			for (int i = 0; i < users.size(); i++) {
-				
-				if (users.get(i)[0].equals(username) && users.get(i)[1].equals(password)) {
-					validAdmin = true;
-					break;
-				}
-			}	
-		}
-		
 		// if the username and password were not valid, return with an error Response.
-		if(!validAdmin)
+		if(!isValidAdmin(parameterMap))
 			return Response.status(400).entity("Username and password are incorrect").type("application/json").build();
 		
 		// Instantiate the boolean array to determine which times to live need to be set to a default value.
@@ -251,35 +248,35 @@ public class CacheManager {
 				switch(switchArgument) {
 				
 				case "ace":
-					Cache.getData().AceTTL = timeInMillis;
+					cache.AceTTL = timeInMillis;
 					setDefault[0] = false;
 					break;
 				case "archive":
-					Cache.getData().ArchiveTTL = timeInMillis;
+					cache.ArchiveTTL = timeInMillis;
 					setDefault[1] = false;
 					break;
 				case "embed":
-					Cache.getData().EmbedTTL = timeInMillis;
+					cache.EmbedTTL = timeInMillis;
 					setDefault[2] = false;
 					break;
 				case "images":
-					Cache.getData().ImageTTL = timeInMillis;
+					cache.ImageTTL = timeInMillis;
 					setDefault[3] = false;
 					break;
 				case "locations":
-					Cache.getData().LocationTTL = timeInMillis;
+					cache.LocationTTL = timeInMillis;
 					setDefault[4] = false;
 					break;
 				case "map":
-					Cache.getData().MapTTL = timeInMillis;
+					cache.MapTTL = timeInMillis;
 					setDefault[5] = false;
 					break;
 				case "weather":
-					Cache.getData().WeatherTTL = timeInMillis;
+					cache.WeatherTTL = timeInMillis;
 					setDefault[6] = false;
 					break;
 				case "all":
-					Cache.getData().AllTTL = timeInMillis;
+					cache.AllTTL = timeInMillis;
 					setDefault[7] = false;
 					break;
 				default:
@@ -303,28 +300,28 @@ public class CacheManager {
 				switch(i) {
 				
 				case 0:
-					Cache.getData().AceTTL = timeInMillis;
+					cache.AceTTL = timeInMillis;
 					break;
 				case 1:
-					Cache.getData().ArchiveTTL = timeInMillis;
+					cache.ArchiveTTL = timeInMillis;
 					break;
 				case 2:
-					Cache.getData().EmbedTTL = timeInMillis;
+					cache.EmbedTTL = timeInMillis;
 					break;
 				case 3:
-					Cache.getData().ImageTTL = timeInMillis;
+					cache.ImageTTL = timeInMillis;
 					break;
 				case 4:
-					Cache.getData().LocationTTL = timeInMillis;
+					cache.LocationTTL = timeInMillis;
 					break;
 				case 5:
-					Cache.getData().MapTTL = timeInMillis;
+					cache.MapTTL = timeInMillis;
 					break;
 				case 6:
-					Cache.getData().WeatherTTL = timeInMillis;
+					cache.WeatherTTL = timeInMillis;
 					break;
 				case 7:
-					Cache.getData().AllTTL = timeInMillis;
+					cache.AllTTL = timeInMillis;
 					break;
 				default:
 					break;
@@ -371,13 +368,63 @@ public class CacheManager {
 	public Response clearCache() {
 		
 		// clear all of the cache components.
-		Cache.getData().lifeMap.clear();
-		Cache.getData().cacheMap.clear();
-		Cache.getData().imageCacheMap.clear();
+		cache.lifeMap.clear();
+		cache.cacheMap.clear();
+		cache.imageCacheMap.clear();
+		
+		hits = 0;
+		misses = 0;
 		
 		// return with a message stating that the clearing was successful.
 		return Response.status(200).entity("Cache cleared successfully").type("application/json").build();
+	}
+	
+	
+	/**
+	 * Called to retrieve the overall number of hits and misses that have occurred for a session
+	 * @param parameterMap The parameters from the call to the server.
+	 * @return a formatted Response from either the Auroras.live server or the cache.
+	 */
+	public Response getCacheStatus(MultivaluedMap<String, String> parameterMap) {
+		
+		
+		if(!isValidAdmin(parameterMap))
+			return Response.status(400).entity("Incorrect username and/or password").type("application/json").build();
+		
+		// Create JSON object with the cache's variables status
+		JSONObject jsonCacheStatus = new JSONObject();
+	
+		jsonCacheStatus.put("hits", hits);
+		jsonCacheStatus.put("misses", misses);
+		jsonCacheStatus.put("request", "cache status");
+		
+		// return with a message stating that the clearing was successful.
+		return Response.status(200).entity(jsonCacheStatus.toString()).type("application/json").build();
 		
 	}
 
+	/**
+	 * Helper function to determine if input contains valid administrative credentials
+	 * @param parameterMap Containing the request to the this CacheManager
+	 * @return true if a correct key-value pair for administrative rights is encountered, false otherwise
+	 */
+	private boolean isValidAdmin(MultivaluedMap<String, String> parameterMap) {
+		
+		String username = null;
+		String password = null;
+		
+		// check if the username and password that were entered are valid.
+		if (parameterMap.containsKey("username") && parameterMap.containsKey("password")) {
+			username = parameterMap.get("username").get(0);
+			password = parameterMap.get("password").get(0);
+			
+			for (int i = 0; i < users.size(); i++)		
+				if (users.get(i)[0].equals(username) && users.get(i)[1].equals(password))
+					return true;
+		}
+		
+		return false;
+	}
+	
+	
 }

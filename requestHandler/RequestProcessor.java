@@ -29,11 +29,6 @@ public class RequestProcessor {
 	private RESTRequestFacade restFacade = new RESTRequestFacade();
 	
 	/**
-	 * A method of communication with the cache manager that talks to the cache. Makes important decisions to do with the cache.
-	 */
-	private CacheManager cacheManager = new CacheManager();
-	
-	/**
 	 * The main function for calling recieving requests from a browser with a REST query.
 	 * @param ui
 	 * @return a response to the request. Either coming directly from Auroras.live or the cache.
@@ -53,9 +48,11 @@ public class RequestProcessor {
 		else if (parameterMap.containsKey("command")) {
 			type = parameterMap.get("command").get(0);
 			if (type.equals("configure"))
-				return cacheManager.configure(parameterMap);
+				return CacheManager.getCacheManager().configure(parameterMap);
 			else if (type.equals("clear"))
-				return cacheManager.clearCache();
+				return CacheManager.getCacheManager().clearCache();
+			else if (type.equals("getCacheStatus"))
+				return CacheManager.getCacheManager().getCacheStatus(parameterMap);
 		}
 		else
 			return Response.status(400).entity("ERROR 400: Bad request").type("application/json").build();
@@ -88,7 +85,7 @@ public class RequestProcessor {
 		// if no-caching=false call the cache 
 		if (noCaching.equals("false")) {
 			System.out.println("Cache get");
-			return cacheManager.cacheGet(parameterMap);
+			return CacheManager.getCacheManager().cacheGet(parameterMap);
 		} // else call the Auroras.live API
 		else {
 			if((type.equals("images" ) && !parameterMap.containsKey("action")) || type.equals("embed" ) || type.equals("map"))

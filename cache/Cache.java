@@ -13,13 +13,7 @@ public class Cache {
 	public HashMap<Integer, Response> cacheMap = new HashMap<>();
 	public HashMap<Integer, byte[]> imageCacheMap = new HashMap<>();
 	
-	// create the cache instance (singleton instance)
-	private static Cache cache = new Cache();
-	
-	// a method to return the instance of the cache
-	public static Cache getData() { return cache; }
-	
-	private Cache() { }
+	public Cache() { }
 	
 	/**
 	 * The time to live for the specific types of objects stored inside the cache.
