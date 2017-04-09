@@ -136,7 +136,7 @@ public class CacheManager {
 			// call the cache here
 			System.out.println("Get from cache. Hits: "+hits);
 			
-			if (type.equals("map") || type.equals("images")) {
+			if ((type.equals("images" ) && !parameterMap.containsKey("action")) || type.equals("embed" ) || type.equals("map")) {
 				byte[] entityBody = cache.imageCacheMap.get(hashKey);
 				
 				InputStream stream = new ByteArrayInputStream(entityBody);
