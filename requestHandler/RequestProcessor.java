@@ -78,7 +78,7 @@ public class RequestProcessor {
 		if (parameterMap.containsKey("no-caching"))
 			noCaching = parameterMap.get("no-caching").get(0);
 		else
-			noCaching = "true";
+			noCaching = "false";
 		
 		noCaching = noCaching.toLowerCase();
 	
