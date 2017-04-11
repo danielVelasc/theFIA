@@ -21,6 +21,7 @@ public class CacheManager {
 	/**
 	 * Used to record the number of global hits and misses from a session
 	 */
+	private long defaultTTL = -1;
 	private static int hits = 0;
 	private static int misses = 0;
 	private static CacheManager cacheManager = new CacheManager();
@@ -45,7 +46,7 @@ public class CacheManager {
 	
 	/**
 	 * The constructor for the CacheManager object. This sets the usernames and passwords for
-	 * configure command and creates the cache it will manage.
+	 * administrative commands, and creates the cache it will manage.
 	 */
 	private CacheManager() {
 		
@@ -57,7 +58,7 @@ public class CacheManager {
 		users.add(eric);
 		users.add(quinn);
 		
-		cache = new Cache();
+		cache = new Cache(defaultTTL);
 		
 	}
 	
@@ -362,10 +363,13 @@ public class CacheManager {
 	}
 	
 	/**
-	 * Use to clear the cache of all entries.
+	 * Use to clear the cache of all entries. Times to live remain the same
 	 * @return A response stating that the purge was successful.
 	 */
-	public Response clearCache() {
+	public Response clearCache(MultivaluedMap<String, String> parameterMap) {
+		
+		if(!isValidAdmin(parameterMap))
+			return Response.status(400).entity("Incorrect username and/or password").type("application/json").build();
 		
 		// clear all of the cache components.
 		cache.lifeMap.clear();
@@ -382,6 +386,7 @@ public class CacheManager {
 	
 	/**
 	 * Called to retrieve the overall number of hits and misses that have occurred for a session
+	 * as well as the current times to live (-1 signifies time to live)
 	 * @param parameterMap The parameters from the call to the server.
 	 * @return a formatted Response from either the Auroras.live server or the cache.
 	 */
@@ -394,9 +399,13 @@ public class CacheManager {
 		// Create JSON object with the cache's variables status
 		JSONObject jsonCacheStatus = new JSONObject();
 	
-		jsonCacheStatus.put("hits", hits);
-		jsonCacheStatus.put("misses", misses);
-		jsonCacheStatus.put("request", "cache status");
+		jsonCacheStatus.put("Report Type", "cache status");
+		jsonCacheStatus.put("Hits", hits);
+		jsonCacheStatus.put("Misses", misses);
+		
+		jsonCacheStatus.put("TTL", cache.getTTLs());
+
+		
 		
 		// return with a message stating that the clearing was successful.
 		return Response.status(200).entity(jsonCacheStatus.toString()).type("application/json").build();

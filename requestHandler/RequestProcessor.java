@@ -50,7 +50,7 @@ public class RequestProcessor {
 			if (type.equals("configure"))
 				return CacheManager.getCacheManager().configure(parameterMap);
 			else if (type.equals("clear"))
-				return CacheManager.getCacheManager().clearCache();
+				return CacheManager.getCacheManager().clearCache(parameterMap);
 			else if (type.equals("getCacheStatus"))
 				return CacheManager.getCacheManager().getCacheStatus(parameterMap);
 		}
